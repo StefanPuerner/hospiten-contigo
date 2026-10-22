@@ -45,7 +45,7 @@ Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospite
 | 4 | Traducción en consulta (+ intérprete) | `translate`, `interpreter` | Consulta, módulo "Traductor" |
 | 5 | Informe explicado (+ duda a la consulta) | `reports`, `report`, `question`, `questionSent` | Pestaña Informes |
 | — | Privacidad | `settings` | Pestaña "Ajustes" y avatar |
-| — | Hablar con una persona | `human` | Pie de varias pantallas |
+| — | Hablar con una persona | `human` | Pie de "Detalle de la cita" y "Mi turno" (solo ahí: en el asistente, el traductor y la consulta ya hay una persona o una vía propia) |
 
 ### Asistente telefónico (`call`)
 - Llamada simulada con temporizador real y pulso animado mientras está activa.

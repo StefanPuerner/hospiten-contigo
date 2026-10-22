@@ -241,7 +241,8 @@ export default function App() {
     month: "long",
     year: "numeric",
   })
-  const footer = !["home", "human", "call", "settings", "language", "pre", "summary", "preSent", "report"].includes(screen)
+  // Human support is offered only where someone may be left waiting or lost.
+  const footer = screen === "appointment" || screen === "turn"
   // The doctor always reads Spanish; typed answers are passed on as written.
   const ds = dict.ES.doctorSummary
   const forDoctor = (i: number) =>
