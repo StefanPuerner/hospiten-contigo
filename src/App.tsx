@@ -1,274 +1,25 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Icon } from "./Icon"
+import { dict, langs, languageNames, spanishNames, type Lang, type Step } from "./i18n"
 
 type Screen = "home" | "appointments" | "appointment" | "contigo" | "call" | "settings" | "language" | "pre" | "summary" | "preSent" | "turn" | "consultation" | "share" | "shareSent" | "translate" | "interpreter" | "reports" | "report" | "question" | "questionSent" | "human"
-type Lang = "ES" | "EN" | "DE"
-const languages: Record<Lang, string> = {
-  ES: "Español",
-  EN: "Inglés",
-  DE: "Alemán",
-}
+// `spec` indexes the translated specialty name (0 = Traumatología).
 const appointments = [
-  {
-    id: 0,
-    name: "Traumatología",
-    day: 19,
-    time: "11:30",
-    doctor: "Dra. Elena Martín",
-    room: "2.14",
-    past: false,
-  },
-  {
-    id: 1,
-    name: "Cardiología",
-    day: 22,
-    time: "09:15",
-    doctor: "Dr. Pablo Ruiz",
-    room: "1.08",
-    past: false,
-  },
-  {
-    id: 2,
-    name: "Dermatología",
-    day: 28,
-    time: "16:00",
-    doctor: "Dra. Lucía Torres",
-    room: "3.02",
-    past: false,
-  },
-  {
-    id: 3,
-    name: "Medicina general",
-    day: 12,
-    time: "10:00",
-    doctor: "Dr. Javier Santos",
-    room: "1.05",
-    past: true,
-  },
-  {
-    id: 4,
-    name: "Traumatología",
-    day: 7,
-    time: "11:30",
-    doctor: "Dra. Elena Martín",
-    room: "2.14",
-    past: true,
-  },
+  { id: 0, spec: 0, day: 19, time: "11:30", doctor: 0, room: "2.14", past: false },
+  { id: 1, spec: 1, day: 22, time: "09:15", doctor: 1, room: "1.08", past: false },
+  { id: 2, spec: 2, day: 28, time: "16:00", doctor: 2, room: "3.02", past: false },
+  { id: 3, spec: 3, day: 12, time: "10:00", doctor: 3, room: "1.05", past: true },
+  { id: 4, spec: 0, day: 7, time: "11:30", doctor: 0, room: "2.14", past: true },
 ]
-const questions: Record<Lang, string[]> = {
-  ES: [
-    "¿Qué te ocurre y desde cuándo?",
-    "¿Has tenido alguna caída?",
-    "¿Qué intensidad tiene el dolor?",
-    "¿Cuándo empeora el dolor?",
-    "¿Hay algo más que quieras comentar?",
-  ],
-  EN: [
-    "What is bothering you and for how long?",
-    "Have you had a fall?",
-    "How severe is the pain?",
-    "When does the pain get worse?",
-    "Is there anything else you would like to add?",
-  ],
-  DE: [
-    "Was fehlt Ihnen und seit wann?",
-    "Hatten Sie einen Sturz?",
-    "Wie stark sind die Schmerzen?",
-    "Wann werden die Schmerzen schlimmer?",
-    "Möchten Sie noch etwas hinzufügen?",
-  ],
-}
-const exampleAnswers: Record<Lang, string[]> = {
-  ES: [
-    "Me duele la rodilla derecha desde hace dos semanas",
-    "No",
-    "Moderado, 5 de 10",
-    "Al caminar y por la noche",
-    "No, nada más",
-  ],
-  EN: [
-    "My right knee has hurt for two weeks",
-    "No",
-    "Moderate, 5 out of 10",
-    "When walking and at night",
-    "No, nothing else",
-  ],
-  DE: [
-    "Mein rechtes Knie tut seit zwei Wochen weh",
-    "Nein",
-    "Mäßig, 5 von 10",
-    "Beim Gehen und nachts",
-    "Nein, sonst nichts",
-  ],
-}
-type Speaker = "ia" | "patient" | "agent"
-const speakers: Record<Speaker, string> = {
-  ia: "ASISTENTE DE CITAS · IA",
-  patient: "ANA",
-  agent: "LAURA · EQUIPO DE CITAS",
-}
-type CallLine = { who: Speaker, text: string }
-// Each "Simular respuesta" reveals the next turn; the summary fields of the
-// turns reached so far are what the agent receives on handoff.
-const callTurns: { lines: CallLine[], summary?: [string, string][] }[] = [
-  {
-    lines: [
-      {
-        who: "ia",
-        text: "Hola, has llamado a Hospiten. Soy el asistente virtual de citas: puedo pedir, cambiar o anular una cita. Si prefieres hablar con una persona, dilo en cualquier momento.",
-      },
-    ],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Quiero pedir cita en Traumatología." },
-      { who: "ia", text: "De acuerdo. ¿Me dices tu nombre completo y tu fecha de nacimiento?" },
-    ],
-    summary: [["Gestión", "Pedir cita · Traumatología"]],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Ana López, 3 de marzo de 1985." },
-      { who: "ia", text: "Gracias, Ana. ¿Cuál es el motivo de la consulta?" },
-    ],
-    summary: [["Paciente", "Ana López · 03/03/1985"]],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Me duele la rodilla derecha desde hace dos semanas." },
-      { who: "ia", text: "Anotado. ¿Prefieres mañana o tarde, y en qué hospital?" },
-    ],
-    summary: [["Motivo indicado", "Dolor de rodilla derecha, desde hace dos semanas"]],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Por la mañana, en Estepona." },
-      {
-        who: "ia",
-        text: "Tengo hueco el lunes 19 de mayo a las 11:30 con la Dra. Elena Martín, en Hospiten Estepona. ¿Te viene bien?",
-      },
-    ],
-    summary: [
-      ["Preferencia", "Mañanas · Hospiten Estepona"],
-      ["Estado", "Hueco ofrecido: lun 19 mayo, 11:30 · sin confirmar"],
-    ],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Sí, perfecto. ¿Crees que es grave?" },
-      {
-        who: "ia",
-        text: "No puedo darte información clínica; la doctora te lo explicará en la consulta. Tu cita queda confirmada: lunes 19 de mayo, 11:30. Te envío un SMS con la confirmación y un enlace para preparar tu consulta.",
-      },
-    ],
-    summary: [
-      ["Estado", "Cita confirmada: lun 19 mayo, 11:30 · SMS enviado"],
-      ["Nota", "Preguntó si es grave; no se dio información clínica"],
-    ],
-  },
-  {
-    lines: [
-      { who: "patient", text: "Vale, muchas gracias." },
-      { who: "ia", text: "A ti, Ana. ¡Que te mejores!" },
-    ],
-  },
-]
-const handoffLines: CallLine[] = [
-  { who: "patient", text: "Prefiero hablar con una persona." },
-  {
-    who: "ia",
-    text: "Claro. Te paso con el equipo de citas y le envío el resumen de la llamada para que no tengas que repetir nada.",
-  },
-  {
-    who: "agent",
-    text: "Hola, soy Laura, del equipo de citas. Ya tengo tu resumen, así que seguimos desde donde lo dejaste.",
-  },
-]
-const relatives = ["Carlos López · Hermano", "Marta López · Madre"]
-const permissionLabels = {
-  reports: "Informes y diagnósticos",
-  appointments: "Citas",
-  turn: "Turno en vivo",
-}
-const parameters = [
-  {
-    name: "Colesterol LDL",
-    value: "162 mg/dL",
-    range: "Referencia ilustrativa: menos de 100 mg/dL",
-    normal: false,
-    meaning:
-      "El LDL transporta colesterol. Un valor elevado puede favorecer su acumulación en las arterias. El objetivo depende de tu riesgo cardiovascular.",
-    advice:
-      "Se suelen revisar la alimentación, la actividad física y otros factores de riesgo. Tu médico decidirá si necesitas tratamiento.",
-  },
-  {
-    name: "Glucosa",
-    value: "92 mg/dL",
-    range: "Referencia ilustrativa en ayunas: 70–99 mg/dL",
-    normal: true,
-    meaning:
-      "La glucosa es una fuente de energía. Este resultado está dentro del intervalo de referencia ilustrativo en ayunas.",
-    advice:
-      "Se suelen mantener hábitos saludables y los controles indicados por tu médico. Se interpreta junto con tu historia clínica.",
-  },
-  {
-    name: "Hemoglobina",
-    value: "13,5 g/dL",
-    range: "Referencia ilustrativa: 12–16 g/dL",
-    normal: true,
-    meaning:
-      "La hemoglobina ayuda a transportar oxígeno por la sangre. Este valor está dentro del intervalo de referencia ilustrativo.",
-    advice:
-      "Se suele valorar junto con el resto del hemograma y los síntomas. Tu médico indicará si hace falta seguimiento.",
-  },
-]
-const reportList = [
-  {
-    title: "Análisis de sangre",
-    date: "12 mayo 2025",
-    type: "Laboratorio",
-    appointment: "Medicina general",
-    intro: "Perfil lipídico, glucosa y hemograma",
-  },
-  {
-    title: "Informe de alta",
-    date: "7 mayo 2025",
-    type: "Alta de consulta",
-    appointment: "Traumatología",
-    intro: "Valoración y recomendaciones de seguimiento",
-  },
-]
+const permissionKeys = ["reports", "appointments", "turn"] as const
 // Screens not listed under any section belong to "Contigo".
-const navItems: { title: string, icon: string, target: Screen, screens: Screen[] }[] = [
-  { title: "Inicio", icon: "home", target: "home", screens: ["home"] },
-  { title: "Citas", icon: "calendar", target: "appointments", screens: ["appointments", "appointment"] },
-  { title: "Contigo", icon: "heart", target: "contigo", screens: [] },
-  { title: "Informes", icon: "file", target: "reports", screens: ["reports", "report", "question", "questionSent"] },
-  { title: "Ajustes", icon: "settings", target: "settings", screens: ["settings"] },
+const navItems: { key: keyof typeof dict.ES.nav, icon: string, target: Screen, screens: Screen[] }[] = [
+  { key: "home", icon: "home", target: "home", screens: ["home"] },
+  { key: "appointments", icon: "calendar", target: "appointments", screens: ["appointments", "appointment"] },
+  { key: "contigo", icon: "heart", target: "contigo", screens: [] },
+  { key: "reports", icon: "file", target: "reports", screens: ["reports", "report", "question", "questionSent"] },
+  { key: "settings", icon: "settings", target: "settings", screens: ["settings"] },
 ]
-const titles: Record<Screen, string> = {
-  home: "Inicio",
-  appointments: "Mis citas",
-  appointment: "Detalle de la cita",
-  contigo: "Hospiten Contigo",
-  call: "Asistente de citas",
-  settings: "Ajustes y privacidad",
-  language: "Pre-consulta",
-  pre: "Pre-consulta",
-  summary: "Revisar resumen",
-  preSent: "Resumen enviado",
-  turn: "Mi turno",
-  consultation: "Tu consulta",
-  share: "Compartir mi turno",
-  shareSent: "Turno compartido",
-  translate: "Traductor",
-  interpreter: "Intérprete solicitado",
-  reports: "Mis informes",
-  report: "Informe explicado",
-  question: "Tengo una duda",
-  questionSent: "Duda enviada",
-  human: "Atención personal",
-}
 function Button({
   children,
   onClick,
@@ -290,11 +41,11 @@ function Button({
     </button>
   )
 }
-function IA() {
+function Notice({ text }: { text: string }) {
   return (
     <div className="notice">
       <Icon name="shield" size={21} />
-      <span>Asistente de IA. No realiza diagnósticos.</span>
+      <span>{text}</span>
     </div>
   )
 }
@@ -325,25 +76,27 @@ function Toggle({
   )
 }
 function RelativePicker({
+  relatives,
   value,
   onChange,
 }: {
-  value: string
-  onChange: (relative: string) => void
+  relatives: string[]
+  value: number | null
+  onChange: (relative: number) => void
 }) {
   return (
     <div className="language-options">
-      {relatives.map((r) => (
+      {relatives.map((r, i) => (
         <button
-          className={`language-option ${value === r ? "chosen" : ""}`}
+          className={`language-option ${value === i ? "chosen" : ""}`}
           key={r}
-          onClick={() => onChange(r)}
+          onClick={() => onChange(i)}
         >
           <span className="round-icon">
             <Icon name="user" />
           </span>
           <strong>{r}</strong>
-          <span className="radio">{value === r && <i />}</span>
+          <span className="radio">{value === i && <i />}</span>
         </button>
       ))}
     </div>
@@ -368,18 +121,19 @@ export default function App() {
   const [tab, setTab] = useState<"next" | "past">("next")
   const [month, setMonth] = useState(4)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
-  const [lang, setLang] = useState<Lang>("DE")
+  // App language: everything on screen, including what the assistant says.
+  const [lang, setLang] = useState<Lang>("ES")
   const [answers, setAnswers] = useState<string[]>([])
   const [draft, setDraft] = useState("")
   const [preSent, setPreSent] = useState(false)
   const [extraSummary, setExtraSummary] = useState("")
   const [notification, setNotification] = useState(false)
   const [called, setCalled] = useState(false)
-  const [relative, setRelative] = useState("")
+  const [relative, setRelative] = useState<number | null>(null)
   const [consent, setConsent] = useState(false)
   const [shared, setShared] = useState(false)
-  const [fromLang, setFromLang] = useState<Lang>("ES")
-  const [toLang, setToLang] = useState<Lang>("EN")
+  const [fromLang, setFromLang] = useState<Lang>("EN")
+  const [toLang, setToLang] = useState<Lang>("ES")
   const [listening, setListening] = useState(false)
   const [selectedReport, setSelectedReport] = useState(0)
   const [openParameter, setOpenParameter] = useState<number | null>(0)
@@ -388,20 +142,33 @@ export default function App() {
   const [callStep, setCallStep] = useState(0)
   const [handoffAt, setHandoffAt] = useState<number | null>(null)
   const [callSeconds, setCallSeconds] = useState(0)
-  const [trustedDraft, setTrustedDraft] = useState("")
-  const [trusted, setTrusted] = useState("")
+  const [trustedDraft, setTrustedDraft] = useState<number | null>(null)
+  const [trusted, setTrusted] = useState<number | null>(null)
   const [permissions, setPermissions] = useState({
     reports: true,
     appointments: false,
     turn: false,
   })
   const [aiConsent, setAiConsent] = useState(false)
+  const s = dict[lang]
   const appointment = appointments[selectedAppointment]
-  const report = reportList[selectedReport]
+  const specialty = s.specialties[appointment.spec]
+  const report = s.reportList[selectedReport]
   const activeNav =
-    navItems.find((n) => n.screens.includes(screen))?.title ?? "Contigo"
+    navItems.find((n) => n.screens.includes(screen))?.key ?? "contigo"
   const queueCount = called ? 0 : notification ? 2 : 3
-  const queueWait = called ? "Es tu turno" : notification ? "≈10 min" : "≈15 min"
+  const queueWait = called ? s.yourTurn : notification ? "≈10 min" : "≈15 min"
+  const changeLang = (next: Lang) => {
+    setLang(next)
+    setAnswers([])
+    setDraft("")
+  }
+  useEffect(() => {
+    document.documentElement.lang = lang.toLowerCase()
+    // The translator opens with the patient's language on their side.
+    setToLang(lang)
+    setFromLang((f) => (f === lang ? (lang === "ES" ? "EN" : "ES") : f))
+  }, [lang])
   const go = (next: Screen) => {
     setHistory((h) => [...h, screen])
     setScreen(next)
@@ -422,7 +189,7 @@ export default function App() {
     go("appointment")
   }
   const openAppointmentReport = () => {
-    setSelectedReport(appointment.name === "Traumatología" ? 1 : 0)
+    setSelectedReport(appointment.spec === 0 ? 1 : 0)
     setOpenParameter(0)
     go("report")
   }
@@ -436,14 +203,14 @@ export default function App() {
     setCallSeconds(0)
     go("call")
   }
-  const reachedTurns = callTurns.slice(0, (handoffAt ?? callStep) + 1)
+  const reachedTurns = s.callTurns.slice(0, (handoffAt ?? callStep) + 1)
   const callLines = [
     ...reachedTurns.flatMap((t) => t.lines),
-    ...(handoffAt === null ? [] : handoffLines),
+    ...(handoffAt === null ? [] : s.handoffLines),
   ]
   // Later turns overwrite earlier fields with the same label (e.g. "Estado").
   const callSummary = [...new Map(reachedTurns.flatMap((t) => t.summary ?? []))]
-  const callEnded = handoffAt !== null || callStep === callTurns.length - 1
+  const callEnded = handoffAt !== null || callStep === s.callTurns.length - 1
   const callClock = `${Math.floor(callSeconds / 60)}:${String(callSeconds % 60).padStart(2, "0")}`
   useEffect(() => {
     if (screen !== "call" || callEnded) return
@@ -470,43 +237,54 @@ export default function App() {
   const startDay = new Date(2025, month, 1).getDay()
   const blanks = (startDay + 6) % 7
   const days = new Date(2025, month + 1, 0).getDate()
-  const monthLabel = new Date(2025, month, 1).toLocaleDateString("es-ES", {
+  const monthLabel = new Date(2025, month, 1).toLocaleDateString(s.locale, {
     month: "long",
     year: "numeric",
   })
   const footer = !["home", "human", "call", "settings", "language", "pre", "summary", "preSent", "report"].includes(screen)
-  const answerText = (i: number) => answers[i] || "No indicado"
+  // The doctor always reads Spanish; typed answers are passed on as written.
+  const ds = dict.ES.doctorSummary
+  const forDoctor = (i: number) =>
+    answers[i] === s.exampleAnswers[i] ? ds.examples[i] : answers[i] || ds.notGiven
+  const relativeName = (i: number) => s.relatives[i].split(" · ")[0]
+  const languageSelect = (value: Lang, onChange: (l: Lang) => void) => (
+    <select value={value} onChange={(e) => onChange(e.target.value as Lang)}>
+      {langs.map((l) => (
+        <option key={l} value={l}>
+          {languageNames[l]}
+        </option>
+      ))}
+    </select>
+  )
   const moduleCards = (
     <div className="module-list">
       {[
         {
-          title: "Asistente de citas",
-          copy: "Pide, cambia o anula tu cita por teléfono",
+          title: s.modules.call[0],
+          copy: s.modules.call[1],
           icon: "phone",
           action: startCall,
         },
         {
-          title: "Pre-consulta",
-          copy: preSent
-            ? "Resumen enviado a tu médico"
-            : "Prepara tu próxima visita",
+          title: s.modules.pre[0],
+          copy: preSent ? s.modules.preDone : s.modules.pre[1],
           icon: "chat",
           action: startPre,
         },
         {
-          title: "Traductor",
-          copy: "Habla y entiende, en tu idioma",
+          title: s.modules.translate[0],
+          copy: s.modules.translate[1],
           icon: "translate",
           action: () => go("translate"),
         },
         {
-          title: "Mis informes",
-          copy: "Tu información médica, más clara",
+          title: s.modules.reports[0],
+          copy: s.modules.reports[1],
           icon: "file",
           action: () => go("reports"),
         },
       ].map((m) => (
-        <button className="module-card" key={m.title} onClick={m.action}>
+        <button className="module-card" key={m.icon} onClick={m.action}>
           <span className="module-icon">
             <Icon name={m.icon} />
           </span>
@@ -519,80 +297,71 @@ export default function App() {
       ))}
     </div>
   )
-  const journey = [
+  const first = appointment.id === 0
+  const j = s.journey
+  const journey: {
+    label: string
+    description: string
+    state: Step
+    action: () => void
+    disabled: boolean
+  }[] = [
     {
-      label: "Cita",
-      description:
-        appointment.id === 0
-          ? "Confirmada por teléfono · SMS recibido"
-          : "Confirmada",
-      state: "Hecho",
+      label: j.appointment,
+      description: first ? j.appointmentCall : s.confirmed,
+      state: "hecho",
       action: startCall,
-      disabled: appointment.id !== 0,
+      disabled: !first,
     },
     {
-      label: "Pre-consulta",
-      description: preSent ? "Resumen enviado" : "Preparar mi visita",
-      state: appointment.past || preSent ? "Hecho" : "Pendiente",
+      label: s.modules.pre[0],
+      description: preSent ? j.preDone : j.preTodo,
+      state: appointment.past || preSent ? "hecho" : "pendiente",
       action: startPre,
-      disabled: appointment.id !== 0,
+      disabled: !first,
     },
     {
-      label: "Turno",
-      description:
-        appointment.id === 0
-          ? called
-            ? "Turno completado"
-            : notification
-              ? "2 delante · ≈10 min"
-              : "3 delante · ≈15 min"
-          : "Disponible el día de tu cita",
-      state:
-        appointment.past || (called && appointment.id === 0)
-          ? "Hecho"
-          : appointment.id === 0
-            ? "Ahora"
-            : "Pendiente",
+      label: j.turn,
+      description: first
+        ? called
+          ? j.turnDone
+          : j.turnWaiting(queueCount, queueWait)
+        : j.turnLater,
+      state: appointment.past || (called && first) ? "hecho" : first ? "ahora" : "pendiente",
       action: () => go("turn"),
-      disabled: appointment.id !== 0,
+      disabled: !first,
     },
     {
-      label: "Consulta",
+      label: j.consultation,
       description: appointment.past
-        ? "Consulta realizada"
-        : `${appointment.time} · Consulta ${appointment.room}`,
-      state: appointment.past
-        ? "Hecho"
-        : called && appointment.id === 0
-          ? "Ahora"
-          : "Pendiente",
+        ? j.consultationDone
+        : `${appointment.time} · ${s.room(appointment.room)}`,
+      state: appointment.past ? "hecho" : called && first ? "ahora" : "pendiente",
       action: () => go("consultation"),
-      disabled: appointment.id !== 0 || !called,
+      disabled: !first || !called,
     },
     {
-      label: "Informe",
-      description: appointment.past
-        ? "Explicación disponible"
-        : "Después de tu consulta",
-      state: appointment.past ? "Hecho" : "Pendiente",
+      label: j.report,
+      description: appointment.past ? j.reportDone : j.reportLater,
+      state: appointment.past ? "hecho" : "pendiente",
       action: openAppointmentReport,
       disabled: !appointment.past,
     },
   ]
-  const translation = {
-    ES: {
-      doctor: "¿Desde cuándo tiene el dolor?",
-      patient: "Desde hace dos semanas. Empeora por la noche.",
-    },
-    EN: {
-      doctor: "How long have you had the pain?",
-      patient: "For two weeks. It gets worse at night.",
-    },
-    DE: {
-      doctor: "Seit wann haben Sie die Schmerzen?",
-      patient: "Seit zwei Wochen. Nachts wird es schlimmer.",
-    },
-  }
+  const translation = s.translation
+  const explanation = (title: string, meaning: string, advice: string) => (
+    <div className="parameter-explanation">
+      {title && <p className="muted left">{title}</p>}
+      <h3>{s.whatItMeans}</h3>
+      <p>{meaning}</p>
+      <h3>{s.whatIsDone}</h3>
+      <p>{advice}</p>
+      <div className="reviewed">
+        <Icon name="shield" size={19} />
+        {s.reviewedByDoctor}
+      </div>
+    </div>
+  )
   return (
     <div className="presentation">
       <div className="phone">
@@ -626,26 +395,23 @@ export default function App() {
             <span className="battery">70</span>
           </div>
         </div>
-        <p className="disclaimer">
-          Prototipo conceptual · Hackathon Talento Canario 2026 · No es una app
-          oficial de Hospiten
-        </p>
+        <p className="disclaimer">{s.disclaimer}</p>
         <header className="brand-header">
           <img src={`${import.meta.env.BASE_URL}hospiten-logo.png`} alt="Hospiten" />
           <button
             className="avatar"
             onClick={() => root("settings")}
-            aria-label="Ajustes y privacidad"
+            aria-label={s.titles.settings}
           >
             AL
           </button>
         </header>
         {screen !== "home" && (
           <div className="page-heading">
-            <button aria-label="Volver" onClick={back}>
+            <button aria-label={s.back} onClick={back}>
               <Icon name="back" />
             </button>
-            <h1>{titles[screen]}</h1>
+            <h1>{s.titles[screen]}</h1>
           </div>
         )}
         <main
@@ -656,22 +422,22 @@ export default function App() {
           {screen === "home" && (
             <>
               <div className="greeting">
-                <p>Buenos días,</p>
+                <p>{s.greeting}</p>
                 <h1>Ana</h1>
-                <span>Lunes, 19 de mayo</span>
+                <span>{s.todayLong}</span>
               </div>
               <section className="next-appointment card">
                 <span className="round-icon">
                   <Icon name="calendar" size={25} />
                 </span>
-                <span className="overline">TU PRÓXIMA CITA · HOY</span>
-                <h2>Traumatología</h2>
+                <span className="overline">{s.nextAppointment}</span>
+                <h2>{s.specialties[0]}</h2>
                 <p className="appointment-time">
-                  11:30 <span>· Consulta 2.14</span>
+                  11:30 <span>· {s.room("2.14")}</span>
                 </p>
-                <p>Dra. Elena Martín · Hospiten Estepona</p>
+                <p>{s.doctors[0]} · {s.hospital}</p>
                 <Button onClick={() => openAppointment(0)}>
-                  VER MI CITA
+                  {s.viewAppointment}
                   <Icon name="arrow" size={20} />
                 </Button>
               </section>
@@ -680,18 +446,18 @@ export default function App() {
                   <Icon name="clock" />
                 </span>
                 <span>
-                  <strong>Mi turno · {queueCount} delante</strong>
-                  <span>{called ? "Pasa a la consulta 2.14" : `Tiempo estimado: ${queueWait}`}</span>
+                  <strong>{s.homeTurn(queueCount)}</strong>
+                  <span>{called ? s.goToRoom("2.14") : s.estimated(queueWait)}</span>
                 </span>
                 <Icon name="arrow" size={22} />
               </button>
               <section className="contigo-section card">
                 <div className="section-heading">
                   <Icon name="heart" size={25} />
-                  <h2>Hospiten Contigo</h2>
-                  <span className="tag">Nuevo</span>
+                  <h2>{s.contigoTitle}</h2>
+                  <span className="tag">{s.newTag}</span>
                 </div>
-                <p>Te acompañamos en cada paso.</p>
+                <p>{s.accompany}</p>
                 {moduleCards}
               </section>
             </>
@@ -701,7 +467,7 @@ export default function App() {
               <section className="calendar card">
                 <div className="calendar-heading">
                   <button
-                    aria-label="Mes anterior"
+                    aria-label={s.prevMonth}
                     onClick={() => {
                       setMonth((m) => m - 1)
                       setSelectedDay(null)
@@ -711,7 +477,7 @@ export default function App() {
                   </button>
                   <h2>{monthLabel}</h2>
                   <button
-                    aria-label="Mes siguiente"
+                    aria-label={s.nextMonth}
                     onClick={() => {
                       setMonth((m) => m + 1)
                       setSelectedDay(null)
@@ -721,7 +487,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="calendar-grid">
-                  {["L", "M", "X", "J", "V", "S", "D"].map((d, i) => (
+                  {s.weekdays.map((d, i) => (
                     <span className="weekday" key={`w${i}`}>
                       {d}
                     </span>
@@ -736,9 +502,7 @@ export default function App() {
                     return (
                       <button
                         key={day}
-                        aria-label={`${day} ${monthLabel}${
-                          marked ? ", con cita" : ""
-                        }`}
+                        aria-label={s.dayLabel(day, monthLabel, marked)}
                         aria-pressed={selectedDay === day}
                         onClick={() => {
                           setSelectedDay(selectedDay === day ? null : day)
@@ -756,13 +520,13 @@ export default function App() {
                 </div>
                 <p className="calendar-key">
                   <i />
-                  Día con cita <span>Hoy: 19 de mayo</span>
+                  {s.dayWithAppointment} <span>{s.todayDate}</span>
                 </p>
               </section>
               <div
                 className="tabs"
                 role="tablist"
-                aria-label="Estado de las citas"
+                aria-label={s.appointmentStatus}
               >
                 <button
                   role="tab"
@@ -773,7 +537,7 @@ export default function App() {
                     setSelectedDay(null)
                   }}
                 >
-                  Próximas <span>3</span>
+                  {s.upcoming} <span>3</span>
                 </button>
                 <button
                   role="tab"
@@ -784,7 +548,7 @@ export default function App() {
                     setSelectedDay(null)
                   }}
                 >
-                  Pasadas <span>2</span>
+                  {s.past} <span>2</span>
                 </button>
               </div>
               {selectedDay && (
@@ -792,7 +556,7 @@ export default function App() {
                   className="text-button"
                   onClick={() => setSelectedDay(null)}
                 >
-                  Ver todas las citas · Quitar filtro
+                  {s.clearFilter}
                 </button>
               )}
               <div className="appointment-list" role="tabpanel">
@@ -805,15 +569,15 @@ export default function App() {
                     >
                       <span className="date-tile">
                         <strong>{a.day}</strong>
-                        <span>MAY</span>
+                        <span>{s.monthShort}</span>
                       </span>
                       <span className="appointment-copy">
-                        <strong>{a.name}</strong>
+                        <strong>{s.specialties[a.spec]}</strong>
                         <span>
-                          {a.day === 19 ? "Hoy" : `${a.day} mayo`} · {a.time}
+                          {a.day === 19 ? s.today : s.dateShort(a.day)} · {a.time}
                         </span>
                         <span>
-                          {a.past ? "Realizada" : "Confirmada"} · Presencial
+                          {a.past ? s.done : s.confirmed} · {s.inPerson}
                         </span>
                       </span>
                       <Icon name="arrow" size={20} />
@@ -822,10 +586,10 @@ export default function App() {
                 ) : (
                   <div className="empty-state card">
                     <Icon name="calendar" size={30} />
-                    <h2>Sin citas este día</h2>
-                    <p>Puedes seleccionar otro día o ver todas tus citas.</p>
+                    <h2>{s.noAppointments}</h2>
+                    <p>{s.noAppointmentsHint}</p>
                     <Button secondary onClick={() => setSelectedDay(null)}>
-                      Ver todas
+                      {s.viewAll}
                     </Button>
                   </div>
                 )}
@@ -836,48 +600,44 @@ export default function App() {
             <>
               <section className="appointment-detail card">
                 <span className="tag">
-                  {appointment.past ? "Realizada" : "Confirmada"}
+                  {appointment.past ? s.done : s.confirmed}
                 </span>
-                <h2>{appointment.name}</h2>
+                <h2>{specialty}</h2>
                 <p className="appointment-time">
                   {appointment.day === 19
-                    ? "Hoy"
-                    : `${appointment.day} mayo 2025`}{" "}
+                    ? s.today
+                    : s.dateLong(appointment.day)}{" "}
                   · {appointment.time}
                 </p>
                 <div className="detail-row">
                   <Icon name="user" />
                   <div>
-                    <strong>{appointment.doctor}</strong>
-                    <span>
-                      Especialista en {appointment.name.toLowerCase()}
-                    </span>
+                    <strong>{s.doctors[appointment.doctor]}</strong>
+                    <span>{s.specialist(specialty)}</span>
                   </div>
                 </div>
                 <div className="detail-row">
                   <Icon name="calendar" />
                   <div>
-                    <strong>Hospiten Estepona</strong>
-                    <span>Consulta {appointment.room} · Presencial</span>
+                    <strong>{s.hospital}</strong>
+                    <span>{s.room(appointment.room)} · {s.inPerson}</span>
                   </div>
                 </div>
-                <p className="patient-line">Paciente: Ana López</p>
+                <p className="patient-line">{s.patientLine}</p>
               </section>
               <section className="journey">
-                <h2>Tu recorrido de atención</h2>
-                <p>Todo lo que necesitas, paso a paso.</p>
+                <h2>{s.journeyTitle}</h2>
+                <p>{s.journeyHint}</p>
                 <div className="journey-list">
                   {journey.map((step, i) => (
                     <button
                       className="journey-step"
-                      key={step.label}
+                      key={i}
                       onClick={step.action}
                       disabled={step.disabled}
                     >
-                      <span
-                        className={`step-number ${step.state.toLowerCase()}`}
-                      >
-                        {step.state === "Hecho" ? (
+                      <span className={`step-number ${step.state}`}>
+                        {step.state === "hecho" ? (
                           <Icon name="check" size={20} />
                         ) : (
                           i + 1
@@ -886,10 +646,8 @@ export default function App() {
                       <span className="step-copy">
                         <span>
                           <strong>{step.label}</strong>
-                          <span
-                            className={`step-state ${step.state.toLowerCase()}`}
-                          >
-                            {step.state}
+                          <span className={`step-state ${step.state}`}>
+                            {s.states[step.state]}
                           </span>
                         </span>
                         <span>{step.description}</span>
@@ -904,17 +662,17 @@ export default function App() {
           {screen === "contigo" && (
             <>
               <div className="intro">
-                <span className="tag">NUEVO EN HOSPITEN</span>
-                <h2>Más cerca de ti.</h2>
-                <p>Antes, durante y después de tu consulta.</p>
+                <span className="tag">{s.contigoIntro[0]}</span>
+                <h2>{s.contigoIntro[1]}</h2>
+                <p>{s.contigoIntro[2]}</p>
               </div>
               <button className="home-turn" onClick={() => go("turn")}>
                 <span className="round-icon">
                   <Icon name="clock" />
                 </span>
                 <span>
-                  <strong>Mi turno</strong>
-                  <span>{queueCount} personas delante · {queueWait}</span>
+                  <strong>{s.titles.turn}</strong>
+                  <span>{s.turnPeople(queueCount, queueWait)}</span>
                 </span>
                 <Icon name="arrow" />
               </button>
@@ -927,25 +685,19 @@ export default function App() {
                 <span className={`round-icon ${callEnded ? "" : "live"}`}>
                   <Icon name="phone" size={26} />
                 </span>
-                <h2>Hospiten · Citas</h2>
+                <h2>{s.callTitle}</h2>
                 <p>
-                  {callEnded ? "Llamada finalizada" : "En llamada"} · {callClock}
+                  {callEnded ? s.callEnded : s.inCall} · {callClock}
                 </p>
               </section>
-              <div className="notice">
-                <Icon name="shield" size={21} />
-                <span>
-                  Llamada simulada. El asistente gestiona citas y no da
-                  información clínica.
-                </span>
-              </div>
+              <Notice text={s.callNotice} />
               <div className="chat-stack">
                 {callLines.map((line, i) => (
                   <div
                     className={`bubble ${line.who === "patient" ? "patient" : "assistant"}`}
                     key={i}
                   >
-                    <span className="speaker">{speakers[line.who]}</span>
+                    <span className="speaker">{s.speakers[line.who]}</span>
                     <p>{line.text}</p>
                   </div>
                 ))}
@@ -953,13 +705,10 @@ export default function App() {
               {handoffAt !== null && (
                 <>
                   <section className="card summary-card call-summary">
-                    <h3>Resumen que recibe Laura</h3>
-                    <p className="muted left">
-                      Generado con tus {handoffAt}{" "}
-                      {handoffAt === 1 ? "respuesta" : "respuestas"} al asistente.
-                    </p>
+                    <h3>{s.handoffSummary}</h3>
+                    <p className="muted left">{s.handoffCount(handoffAt)}</p>
                     <dl>
-                      {[...callSummary, ["Motivo del traspaso", "Lo pide la paciente"]].map(
+                      {[...callSummary, s.handoffReason].map(
                         ([label, value]) => (
                           <div key={label}>
                             <dt>{label}</dt>
@@ -969,22 +718,19 @@ export default function App() {
                       )}
                     </dl>
                   </section>
-                  <p className="muted">
-                    Fin de la simulación: Laura completa la gestión y la cita
-                    confirmada llega a la app y por SMS.
-                  </p>
+                  <p className="muted">{s.handoffEnd}</p>
                 </>
               )}
               {!callEnded ? (
                 <>
                   <Button onClick={simulateReply}>
                     <Icon name="mic" size={20} />
-                    SIMULAR RESPUESTA
+                    {s.simulateReply}
                   </Button>
                   {callStep > 0 && (
                     <Button secondary onClick={() => setHandoffAt(callStep)}>
                       <Icon name="user" size={21} />
-                      Pasar con una persona
+                      {s.passToPerson}
                     </Button>
                   )}
                 </>
@@ -995,17 +741,15 @@ export default function App() {
                       <Icon name="chat" />
                     </span>
                     <span>
-                      <strong>SMS · Hospiten</strong>
+                      <strong>{s.smsTitle}</strong>
                       <span>
-                        Cita confirmada: Traumatología, lun 19 may, 11:30, Dra.
-                        Elena Martín. Prepara tu consulta:{" "}
-                        <u>enlace a la pre-consulta</u>
+                        {s.sms} <u>{s.smsLink}</u>
                       </span>
                     </span>
                     <Icon name="arrow" size={20} />
                   </button>
                   <Button secondary onClick={() => openAppointment(0)}>
-                    Ver la cita en la app
+                    {s.viewInApp}
                   </Button>
                 </>
               )}
@@ -1013,143 +757,112 @@ export default function App() {
           )}
           {screen === "settings" && (
             <>
-              <div className="notice">
-                <Icon name="shield" size={21} />
-                <span>
-                  Tus datos de salud solo se usan para atenderte. Tú decides
-                  qué compartes y con quién, y puedes cambiarlo cuando quieras.
-                </span>
-              </div>
+              <Notice text={s.settingsNotice} />
               <section className="card settings-card">
-                <h2>Persona de confianza</h2>
-                <p>
-                  Alguien que puede ver tus diagnósticos e informes y ayudarte a
-                  gestionar tu atención. Pensado sobre todo para personas
-                  mayores: lo decides tú.
-                </p>
-                {trusted ? (
+                <h2>{s.languageSection[0]}</h2>
+                <p>{s.languageSection[1]}</p>
+                <div className="language-options">
+                  {langs.map((l) => (
+                    <button
+                      className={`language-option ${lang === l ? "chosen" : ""}`}
+                      key={l}
+                      onClick={() => changeLang(l)}
+                    >
+                      <span className="language-code">{l}</span>
+                      <strong lang={l.toLowerCase()}>{languageNames[l]}</strong>
+                      <span className="radio">{lang === l && <i />}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="card settings-card">
+                <h2>{s.trustedTitle}</h2>
+                <p>{s.trustedText}</p>
+                {trusted !== null ? (
                   <>
                     <div className="trusted-person">
                       <span className="round-icon">
                         <Icon name="user" />
                       </span>
-                      <strong>{trusted}</strong>
+                      <strong>{s.relatives[trusted]}</strong>
                     </div>
-                    {(Object.keys(permissionLabels) as (keyof typeof permissionLabels)[]).map(
-                      (key) => (
-                        <Toggle
-                          key={key}
-                          label={permissionLabels[key]}
-                          checked={permissions[key]}
-                          onChange={(on) =>
-                            setPermissions((p) => ({ ...p, [key]: on }))
-                          }
-                        />
-                      ),
-                    )}
+                    {permissionKeys.map((key) => (
+                      <Toggle
+                        key={key}
+                        label={s.permissions[key]}
+                        checked={permissions[key]}
+                        onChange={(on) =>
+                          setPermissions((p) => ({ ...p, [key]: on }))
+                        }
+                      />
+                    ))}
                     <Button
                       secondary
                       onClick={() => {
-                        setTrusted("")
-                        setTrustedDraft("")
+                        setTrusted(null)
+                        setTrustedDraft(null)
                       }}
                     >
-                      Quitar persona de confianza
+                      {s.removeTrusted}
                     </Button>
                   </>
                 ) : (
                   <>
-                    <RelativePicker value={trustedDraft} onChange={setTrustedDraft} />
+                    <RelativePicker
+                      relatives={s.relatives}
+                      value={trustedDraft}
+                      onChange={setTrustedDraft}
+                    />
                     <Button
-                      disabled={!trustedDraft}
+                      disabled={trustedDraft === null}
                       onClick={() => setTrusted(trustedDraft)}
                     >
-                      AÑADIR PERSONA DE CONFIANZA
+                      {s.addTrusted}
                     </Button>
                   </>
                 )}
-                <p className="muted left">
-                  Cada permiso se da por separado y se puede retirar en
-                  cualquier momento. Menores de 14 años: la cuenta la gestiona
-                  su tutor. De 14 a 17 años decide el propio menor.
-                </p>
+                <p className="muted left">{s.permissionsNote}</p>
               </section>
               <section className="card settings-card">
-                <h2>Mejora de la IA</h2>
+                <h2>{s.aiTitle}</h2>
                 <Toggle
-                  label="Usar mis datos seudonimizados para mejorar la IA"
-                  description="Opcional y desactivado por defecto. No afecta a tu atención y puedes retirarlo cuando quieras."
+                  label={s.aiLabel}
+                  description={s.aiDescription}
                   checked={aiConsent}
                   onChange={setAiConsent}
                 />
               </section>
               <section className="card summary-card settings-card">
-                <h2>Protección de datos</h2>
+                <h2>{s.dataTitle}</h2>
                 <dl>
-                  <div>
-                    <dt>Responsable</dt>
-                    <dd>El hospital Hospiten que te atiende.</dd>
-                  </div>
-                  <div>
-                    <dt>Finalidad</dt>
-                    <dd>Gestionar tu atención sanitaria y la comunicación contigo.</dd>
-                  </div>
-                  <div>
-                    <dt>Base jurídica</dt>
-                    <dd>
-                      Asistencia sanitaria (art. 9.2.h RGPD). Compartir con tu
-                      persona de confianza y mejorar la IA, solo con tu
-                      consentimiento.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Tus derechos</dt>
-                    <dd>
-                      Acceso, rectificación, supresión, oposición, limitación y
-                      portabilidad. Puedes reclamar ante la Agencia Española de
-                      Protección de Datos.
-                    </dd>
-                  </div>
+                  {s.data.map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
                 </dl>
-                <p className="muted left">
-                  Texto de ejemplo: el texto legal definitivo lo fija Hospiten.
-                </p>
+                <p className="muted left">{s.dataNote}</p>
               </section>
-              <p className="muted">Ajustes simulados · No se guardan datos</p>
+              <p className="muted">{s.settingsNote}</p>
             </>
           )}
           {screen === "language" && (
             <>
-              <IA />
+              <Notice text={s.aiNotice} />
               <div className="intro">
-                <h2>Prepara tu consulta</h2>
-                <p>
-                  Un chat guiado te ayuda a contar a la Dra. Elena Martín el
-                  motivo de tu visita. En la versión real, el asistente adapta
-                  sus preguntas a lo que respondes.
-                </p>
+                <h2>{s.preTitle}</h2>
+                <p>{s.preIntro}</p>
               </div>
               <div className="context-line">
                 <Icon name="calendar" size={20} />
-                Traumatología · Hoy, 11:30
+                {s.preContext}
               </div>
-              <h3>¿En qué idioma prefieres hablar?</h3>
-              <div className="language-options">
-                {(Object.keys(languages) as Lang[]).map((l) => (
-                  <button
-                    className={`language-option ${lang === l ? "chosen" : ""}`}
-                    key={l}
-                    onClick={() => setLang(l)}
-                  >
-                    <span className="language-code">{l}</span>
-                    <strong>{languages[l]}</strong>
-                    <span className="radio">{lang === l && <i />}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="muted">
-                El resumen para tu médico estará en español.
-              </p>
+              <h3>{s.assistantSpeaks(languageNames[lang])}</h3>
+              <button className="text-button" onClick={() => go("settings")}>
+                {s.changeLanguage}
+              </button>
+              <p className="muted">{s.summaryInEs}</p>
               <Button
                 onClick={() => {
                   setAnswers([])
@@ -1157,60 +870,48 @@ export default function App() {
                   go("pre")
                 }}
               >
-                COMENZAR PRE-CONSULTA
+                {s.startPre}
                 <Icon name="arrow" size={20} />
               </Button>
             </>
           )}
           {screen === "pre" && (
             <>
-              <IA />
+              <Notice text={s.aiNotice} />
               <div className="progress-heading">
                 <span>
                   {answers.length === 5
-                    ? "Preguntas completadas"
-                    : `Pregunta ${answers.length + 1} de 5`}
+                    ? s.progressDone
+                    : s.progress(answers.length + 1)}
                 </span>
                 <span className="tag">{lang}</span>
               </div>
               <progress
                 value={answers.length === 5 ? 5 : answers.length + 1}
                 max="5"
-                aria-label="Progreso de pre-consulta"
+                aria-label={s.progressLabel}
               />
               <div className="chat-stack">
-                {questions[lang]
+                {s.questions
                   .slice(0, Math.min(answers.length + 1, 5))
                   .map((q, i) => (
                     <div className="chat-pair" key={i}>
                       <div className="bubble assistant">
-                        <span className="speaker">ASISTENTE · {lang}</span>
-                        <p lang={lang.toLowerCase()}>{q}</p>
+                        <span className="speaker">{s.assistant} · {lang}</span>
+                        <p>{q}</p>
                       </div>
-                      {answers[i] && (
-                        <div
-                          className="bubble patient"
-                          lang={lang.toLowerCase()}
-                        >
-                          {answers[i]}
-                        </div>
-                      )}
+                      {answers[i] && <div className="bubble patient">{answers[i]}</div>}
                     </div>
                   ))}
               </div>
               {answers.length < 5 ? (
                 <>
-                  <p className="muted">
-                    Respuesta de ejemplo · Toca para usarla
-                  </p>
+                  <p className="muted">{s.exampleHint}</p>
                   <button
                     className="answer-suggestion"
-                    lang={lang.toLowerCase()}
-                    onClick={() =>
-                      addAnswer(exampleAnswers[lang][answers.length])
-                    }
+                    onClick={() => addAnswer(s.exampleAnswers[answers.length])}
                   >
-                    {exampleAnswers[lang][answers.length]}
+                    {s.exampleAnswers[answers.length]}
                     <Icon name="arrow" size={18} />
                   </button>
                   <form
@@ -1221,24 +922,22 @@ export default function App() {
                     }}
                   >
                     <input
-                      aria-label="Tu respuesta"
-                      placeholder="Escribe tu respuesta…"
+                      aria-label={s.yourAnswer}
+                      placeholder={s.answerPlaceholder}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                     />
                     <button
                       type="button"
-                      aria-label="Simular dictado con respuesta de ejemplo"
-                      onClick={() =>
-                        setDraft(exampleAnswers[lang][answers.length])
-                      }
+                      aria-label={s.dictate}
+                      onClick={() => setDraft(s.exampleAnswers[answers.length])}
                     >
                       <Icon name="mic" size={21} />
                     </button>
                     <button
                       type="submit"
                       disabled={!draft.trim()}
-                      aria-label="Enviar respuesta"
+                      aria-label={s.sendAnswer}
                     >
                       <Icon name="send" size={22} />
                     </button>
@@ -1247,78 +946,55 @@ export default function App() {
               ) : (
                 <Button onClick={() => go("summary")}>
                   <Icon name="file" size={20} />
-                  REVISAR RESUMEN
+                  {s.reviewSummary}
                 </Button>
               )}
             </>
           )}
           {screen === "summary" && (
             <>
-              <IA />
+              <Notice text={s.aiNotice} />
               <div className="intro">
-                <h2>Revisa antes de enviar</h2>
-                <p>
-                  Este resumen se compartirá con la Dra. Elena Martín para tu
-                  cita de hoy a las 11:30.
-                </p>
+                <h2>{s.reviewTitle}</h2>
+                <p>{s.reviewText}</p>
               </div>
               <section className="card summary-card">
-                <h3>Resumen para el médico (ES)</h3>
-                <dl>
+                <h3>{s.summaryHeading}</h3>
+                <dl lang="es">
                   <div>
-                    <dt>Motivo de consulta</dt>
+                    <dt>{ds.labels[0]}</dt>
+                    <dd>{forDoctor(0)}</dd>
+                  </div>
+                  <div>
+                    <dt>{ds.labels[1]}</dt>
+                    <dd>{forDoctor(1)}</dd>
+                  </div>
+                  <div>
+                    <dt>{ds.labels[2]}</dt>
                     <dd>
-                      {answers[0] === exampleAnswers[lang][0]
-                        ? "Dolor en rodilla derecha desde hace 2 semanas."
-                        : answerText(0)}
+                      {forDoctor(2)} {forDoctor(3)}
                     </dd>
                   </div>
                   <div>
-                    <dt>Caídas o traumatismos</dt>
-                    <dd>
-                      {answers[1] === exampleAnswers[lang][1]
-                        ? "Sin caídas."
-                        : answerText(1)}
-                    </dd>
+                    <dt>{ds.labels[3]}</dt>
+                    <dd>{forDoctor(4)}</dd>
                   </div>
                   <div>
-                    <dt>Intensidad y evolución</dt>
-                    <dd>
-                      {answers[2] === exampleAnswers[lang][2]
-                        ? "Dolor moderado, 5 de 10."
-                        : answerText(2)}{" "}
-                      {answers[3] === exampleAnswers[lang][3]
-                        ? "Empeora al caminar y por la noche."
-                        : answerText(3)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Información adicional</dt>
-                    <dd>
-                      {answers[4] === exampleAnswers[lang][4]
-                        ? "Sin comentarios adicionales."
-                        : answerText(4)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Idioma del paciente</dt>
-                    <dd>{languages[lang]}</dd>
+                    <dt>{ds.labels[4]}</dt>
+                    <dd>{spanishNames[lang]}</dd>
                   </div>
                 </dl>
               </section>
               <label className="field-label" htmlFor="summary-note">
-                ¿Quieres añadir o corregir algo?
+                {s.addOrFix}
               </label>
               <textarea
                 id="summary-note"
                 value={extraSummary}
                 onChange={(e) => setExtraSummary(e.target.value)}
-                placeholder="Escribe una aclaración (opcional)…"
+                placeholder={s.notePlaceholder}
               />
-              <p className="muted">
-                Las respuestas libres se muestran tal como las escribes; este
-                prototipo no realiza traducción automática.
-              </p>
+              <p className="muted">{s.noTranslation}</p>
               <Button
                 onClick={() => {
                   setPreSent(true)
@@ -1326,25 +1002,22 @@ export default function App() {
                 }}
               >
                 <Icon name="send" size={20} />
-                ENVIAR A MI MÉDICO
+                {s.sendToDoctor}
               </Button>
               <Button secondary onClick={() => go("pre")}>
-                Volver a mis respuestas
+                {s.backToAnswers}
               </Button>
             </>
           )}
           {screen === "preSent" && (
             <>
-              <IA />
-              <Success
-                title="Tu médico ya tiene el resumen"
-                text="Resumen preparado para la Dra. Elena Martín. Traumatología · Hoy, 11:30 · Consulta 2.14."
-              />
+              <Notice text={s.aiNotice} />
+              <Success title={s.preSentTitle} text={s.preSentText} />
               <div className="card confirmation-info">
                 <Icon name="file" />
                 <span>
-                  Pre-consulta completada
-                  {extraSummary && " con tu aclaración adicional"}.
+                  {s.preCompleted}
+                  {extraSummary && s.withNote}.
                 </span>
               </div>
               <Button
@@ -1353,56 +1026,50 @@ export default function App() {
                   go("appointment")
                 }}
               >
-                VER EL RECORRIDO DE MI CITA
+                {s.viewJourney}
               </Button>
               <Button secondary onClick={() => go("turn")}>
-                Ver mi turno
+                {s.viewTurn}
               </Button>
-              <p className="muted">
-                Envío simulado. No se ha enviado información real.
-              </p>
+              <p className="muted">{s.simulatedSend}</p>
             </>
           )}
           {screen === "turn" && (
             <>
               <div className="context-line">
                 <Icon name="calendar" size={20} />
-                Hoy, 11:30 · Traumatología
+                {s.turnContext}
               </div>
               <section className="queue card">
-                <span className="tag">CONSULTA 2.14</span>
+                <span className="tag">{s.roomTag}</span>
                 <div className="queue-number">
                   {called ? "0" : notification ? "2" : "3"}
                 </div>
-                <h2>personas delante</h2>
+                <h2>{s.peopleAhead}</h2>
                 <span className="queue-time">
                   <Icon name="clock" size={22} />
-                  {called
-                    ? "Es tu turno"
-                    : notification
-                      ? "≈10 min"
-                      : "≈15 min"}
+                  {queueWait}
                 </span>
                 <progress
                   max="100"
                   value={called ? 100 : notification ? 75 : 45}
-                  aria-label="Avance de tu turno"
+                  aria-label={s.progressTurn}
                 />
-                <p>Hospiten Estepona</p>
+                <p>{s.hospital}</p>
               </section>
               {!notification ? (
                 <>
                   <div className="notice">
                     <Icon name="bell" size={23} />
                     <span>
-                      Te avisamos 10 min antes.
+                      {s.notifyNotice[0]}
                       <br />
-                      Puedes esperar con tranquilidad.
+                      {s.notifyNotice[1]}
                     </span>
                   </div>
                   <Button secondary onClick={() => setNotification(true)}>
                     <Icon name="bell" size={20} />
-                    Simular aviso de turno
+                    {s.simulateAlert}
                   </Button>
                 </>
               ) : (
@@ -1417,11 +1084,11 @@ export default function App() {
                     <Icon name="bell" />
                   </span>
                   <span>
-                    <strong>Te toca en 10 min</strong>
+                    <strong>{s.alertTitle}</strong>
                     <span>
-                      Prepárate para la consulta 2.14.
+                      {s.alertText[0]}
                       <br />
-                      Toca para ver la indicación.
+                      {s.alertText[1]}
                     </span>
                   </span>
                   <Icon name="arrow" size={20} />
@@ -1434,29 +1101,23 @@ export default function App() {
                 }}
               >
                 <Icon name="share" size={21} />
-                {shared ? "COMPARTIR DE NUEVO" : "COMPARTIR CON UN FAMILIAR"}
+                {shared ? s.shareAgain : s.shareWith}
               </Button>
-              <p className="muted">
-                Tiempo estimado. El orden puede variar por necesidades
-                asistenciales.
-              </p>
+              <p className="muted">{s.turnNote}</p>
             </>
           )}
           {screen === "consultation" && (
             <>
-              <Success
-                title="Pasa a la consulta 2.14"
-                text="La Dra. Elena Martín te espera para tu cita de Traumatología de las 11:30."
-              />
+              <Success title={s.consultationTitle} text={s.consultationText} />
               <div className="card consultation-card">
                 <Icon name="calendar" size={28} />
-                <h3>Hospiten Estepona</h3>
-                <p>Ana López · Consulta 2.14</p>
-                <span className="tag">Es tu turno</span>
+                <h3>{s.hospital}</h3>
+                <p>{s.patient} · {s.room("2.14")}</p>
+                <span className="tag">{s.yourTurn}</span>
               </div>
               <Button onClick={() => go("translate")}>
                 <Icon name="translate" size={21} />
-                ABRIR TRADUCTOR
+                {s.openTranslator}
               </Button>
               <Button
                 secondary
@@ -1465,69 +1126,59 @@ export default function App() {
                   go("appointment")
                 }}
               >
-                Ver mi cita
+                {s.viewMyAppointment}
               </Button>
-              <p className="muted">
-                Indicación simulada para esta presentación.
-              </p>
+              <p className="muted">{s.consultationNote}</p>
             </>
           )}
           {screen === "share" && (
             <>
               <div className="intro">
-                <h2>Comparte tu tranquilidad</h2>
-                <p>
-                  Elige a un familiar vinculado para que pueda seguir tu turno.
-                </p>
+                <h2>{s.shareTitle}</h2>
+                <p>{s.shareText}</p>
               </div>
-              <h3>Familiares vinculados</h3>
-              <RelativePicker value={relative} onChange={setRelative} />
-              <div className="notice">
-                <Icon name="shield" size={22} />
-                <span>
-                  Solo se compartirá el estado del turno y el tiempo estimado.
-                  Nunca el motivo de consulta ni tus informes.
-                </span>
-              </div>
+              <h3>{s.linkedRelatives}</h3>
+              <RelativePicker
+                relatives={s.relatives}
+                value={relative}
+                onChange={setRelative}
+              />
+              <Notice text={s.shareNotice} />
               <label className="consent">
                 <input
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
                 />
-                <span>
-                  Acepto compartir mi turno de hoy con el familiar seleccionado.
-                </span>
+                <span>{s.shareConsent}</span>
               </label>
               <Button
-                disabled={!relative || !consent}
+                disabled={relative === null || !consent}
                 onClick={() => {
                   setShared(true)
                   go("shareSent")
                 }}
               >
-                CONFIRMAR Y COMPARTIR
+                {s.confirmShare}
               </Button>
-              <p className="muted">
-                Familiares ficticios · Compartición simulada
-              </p>
+              <p className="muted">{s.shareNote}</p>
             </>
           )}
           {screen === "shareSent" && (
             <>
               <Success
-                title="Tu familiar puede seguir tu turno"
-                text={`Has autorizado compartir el estado de tu turno con ${relative.split(" · ")[0]}.`}
+                title={s.sharedTitle}
+                text={s.sharedText(relativeName(relative ?? 0))}
               />
               <div className="card confirmation-info">
                 <Icon name="share" />
                 <span>
-                  Traumatología · Hoy, 11:30
+                  {s.sharedInfo[0]}
                   <br />
-                  Solo estado del turno y espera estimada.
+                  {s.sharedInfo[1]}
                 </span>
               </div>
-              <Button onClick={() => go("turn")}>VOLVER A MI TURNO</Button>
+              <Button onClick={() => go("turn")}>{s.backToTurn}</Button>
               <Button
                 secondary
                 onClick={() => {
@@ -1536,36 +1187,24 @@ export default function App() {
                   go("turn")
                 }}
               >
-                Dejar de compartir
+                {s.stopSharing}
               </Button>
-              <p className="muted">
-                Confirmación de demostración. No se han enviado datos.
-              </p>
+              <p className="muted">{s.sharedNote}</p>
             </>
           )}
           {screen === "translate" && (
             <>
               <div className="translator-selectors">
                 <label>
-                  Idioma del médico
-                  <select
-                    value={fromLang}
-                    onChange={(e) => {
-                      const l = e.target.value as Lang
-                      setFromLang(l)
-                      if (l === toLang) setToLang(fromLang)
-                    }}
-                  >
-                    {(Object.keys(languages) as Lang[]).map((l) => (
-                      <option key={l} value={l}>
-                        {languages[l]}
-                      </option>
-                    ))}
-                  </select>
+                  {s.doctorLanguage}
+                  {languageSelect(fromLang, (l) => {
+                    setFromLang(l)
+                    if (l === toLang) setToLang(fromLang)
+                  })}
                 </label>
                 <button
                   className="swap-button"
-                  aria-label="Intercambiar idiomas"
+                  aria-label={s.swapLanguages}
                   onClick={() => {
                     setFromLang(toLang)
                     setToLang(fromLang)
@@ -1574,28 +1213,16 @@ export default function App() {
                   <Icon name="translate" />
                 </button>
                 <label>
-                  Tu idioma
-                  <select
-                    value={toLang}
-                    onChange={(e) => {
-                      const l = e.target.value as Lang
-                      setToLang(l)
-                      if (l === fromLang) setFromLang(toLang)
-                    }}
-                  >
-                    {(Object.keys(languages) as Lang[]).map((l) => (
-                      <option key={l} value={l}>
-                        {languages[l]}
-                      </option>
-                    ))}
-                  </select>
+                  {s.yourLanguage}
+                  {languageSelect(toLang, (l) => {
+                    setToLang(l)
+                    if (l === fromLang) setFromLang(toLang)
+                  })}
                 </label>
               </div>
-              <p className="muted">
-                Conversación de ejemplo · Subtítulos y traducción
-              </p>
+              <p className="muted">{s.translationHint}</p>
               <div className="translation-bubble doctor">
-                <span className="speaker">MÉDICO · {fromLang}</span>
+                <span className="speaker">{s.doctorLabel} · {fromLang}</span>
                 <p lang={fromLang.toLowerCase()}>
                   {translation[fromLang].doctor}
                 </p>
@@ -1605,7 +1232,7 @@ export default function App() {
                 </p>
               </div>
               <div className="translation-bubble patient-translation">
-                <span className="speaker">ANA · {toLang}</span>
+                <span className="speaker">{s.patientShort} · {toLang}</span>
                 <p lang={toLang.toLowerCase()}>{translation[toLang].patient}</p>
                 <div className="translation-divider" />
                 <p className="translated" lang={fromLang.toLowerCase()}>
@@ -1615,67 +1242,47 @@ export default function App() {
               <div className="listening-area">
                 <button
                   className={`big-mic ${listening ? "active" : ""}`}
-                  aria-label={
-                    listening
-                      ? "Pausar escucha simulada"
-                      : "Iniciar escucha simulada"
-                  }
+                  aria-label={listening ? s.micPause : s.micStart}
                   onClick={() => setListening(!listening)}
                 >
                   <Icon name="mic" size={30} />
                 </button>
-                <strong>
-                  {listening ? "Escuchando…" : "Toca para hablar"}
-                </strong>
-                <span>
-                  {listening
-                    ? "Escucha simulada · Sin grabación"
-                    : "Micrófono de demostración"}
-                </span>
+                <strong>{listening ? s.listening : s.tapToSpeak}</strong>
+                <span>{listening ? s.listeningNote : s.micDemo}</span>
               </div>
               <Button secondary onClick={() => go("interpreter")}>
                 <Icon name="user" size={21} />
-                SOLICITAR INTÉRPRETE
+                {s.requestInterpreter}
               </Button>
-              <p className="muted">
-                La traducción automática puede contener errores.
-              </p>
+              <p className="muted">{s.mtWarning}</p>
             </>
           )}
           {screen === "interpreter" && (
             <>
               <Success
-                title="Solicitud de intérprete preparada"
-                text={`Se ha simulado una solicitud de apoyo para ${languages[fromLang].toLowerCase()} y ${languages[toLang].toLowerCase()}.`}
+                title={s.interpreterTitle}
+                text={s.interpreterText(languageNames[fromLang], languageNames[toLang])}
               />
               <div className="notice">
                 <Icon name="user" />
-                <span>
-                  En la app real, atención al paciente confirmaría la
-                  disponibilidad del intérprete.
-                </span>
+                <span>{s.interpreterNotice}</span>
               </div>
               <Button onClick={() => go("translate")}>
-                VOLVER AL TRADUCTOR
+                {s.backToTranslator}
               </Button>
-              <p className="muted">
-                No se ha contactado con ningún servicio real.
-              </p>
+              <p className="muted">{s.interpreterNote}</p>
             </>
           )}
           {screen === "reports" && (
             <>
               <div className="intro compact">
-                <p>
-                  Consulta tus documentos y entiende tus resultados con más
-                  claridad.
-                </p>
+                <p>{s.reportsIntro}</p>
               </div>
               <div className="report-list">
-                {reportList.map((r, i) => (
+                {s.reportList.map((r, i) => (
                   <button
                     className="report-list-card card"
-                    key={r.title}
+                    key={i}
                     onClick={() => {
                       setSelectedReport(i)
                       setOpenParameter(0)
@@ -1696,7 +1303,7 @@ export default function App() {
                     <p>{r.intro}</p>
                     <span className="available">
                       <Icon name="check" size={17} />
-                      Explicación disponible
+                      {s.explanationAvailable}
                     </span>
                   </button>
                 ))}
@@ -1706,113 +1313,56 @@ export default function App() {
           {screen === "report" && (
             <>
               <section className="report-intro">
-                <span className="overline">{report.date} · ANA LÓPEZ</span>
+                <span className="overline">{report.date} · {s.patient.toUpperCase()}</span>
                 <h2>{report.title}</h2>
-                <p>{report.appointment} · Hospiten Estepona</p>
+                <p>{report.appointment} · {s.hospital}</p>
               </section>
               <div className="reviewed">
                 <Icon name="shield" size={22} />
-                <strong>Revisado por tu médico</strong>
+                <strong>{s.reviewedByDoctor}</strong>
               </div>
-              <p className="muted left">
-                Toca cada bloque para ver su explicación.
-              </p>
-              {selectedReport === 0
-                ? parameters.map((p, i) => (
-                    <section className="parameter card" key={p.name}>
-                      <button
-                        className="parameter-toggle"
-                        aria-expanded={openParameter === i}
-                        onClick={() =>
-                          setOpenParameter(openParameter === i ? null : i)
-                        }
-                      >
-                        <span>
-                          <strong>{p.name}</strong>
-                          <span className="parameter-value">{p.value}</span>
-                          <span
-                            className={`result-badge ${
-                              p.normal ? "normal" : ""
-                            }`}
-                          >
-                            {p.normal ? "Normal" : "Fuera de rango"}
-                          </span>
+              <p className="muted left">{s.tapBlock}</p>
+              {(selectedReport === 0
+                ? s.parameters.map((p) => ({
+                    key: p.name,
+                    head: (
+                      <>
+                        <strong>{p.name}</strong>
+                        <span className="parameter-value">{p.value}</span>
+                        <span className={`result-badge ${p.normal ? "normal" : ""}`}>
+                          {p.normal ? s.normal : s.outOfRange}
                         </span>
-                        <span
-                          className={
-                            openParameter === i ? "chevron expanded" : "chevron"
-                          }
-                        >
-                          <Icon name="arrow" size={21} />
-                        </span>
-                      </button>
-                      {openParameter === i && (
-                        <div className="parameter-explanation">
-                          <p className="muted left">{p.range}</p>
-                          <h3>Qué significa</h3>
-                          <p>{p.meaning}</p>
-                          <h3>Qué se suele hacer</h3>
-                          <p>{p.advice}</p>
-                          <div className="reviewed">
-                            <Icon name="shield" size={19} />
-                            Revisado por tu médico
-                          </div>
-                        </div>
-                      )}
-                    </section>
-                  ))
-                : [
-                    {
-                      title: "Valoración de la rodilla",
-                      status: "Seguimiento indicado",
-                      meaning:
-                        "El informe de ejemplo recoge dolor en la rodilla derecha y recomienda una nueva valoración. No establece un diagnóstico en este prototipo.",
-                      advice:
-                        "Acudir a la revisión de Traumatología del 19 de mayo a las 11:30 con la Dra. Elena Martín, consulta 2.14.",
-                    },
-                    {
-                      title: "Cuidados y seguimiento",
-                      status: "Recomendaciones",
-                      meaning:
-                        "Estas indicaciones ilustrativas sirven para preparar la próxima visita y comentar la evolución de los síntomas.",
-                      advice:
-                        "Seguir las indicaciones personalizadas del equipo médico. Si aparece un empeoramiento importante, contactar con un profesional.",
-                    },
-                  ].map((p, i) => (
-                    <section className="parameter card" key={p.title}>
-                      <button
-                        className="parameter-toggle"
-                        aria-expanded={openParameter === i}
-                        onClick={() =>
-                          setOpenParameter(openParameter === i ? null : i)
-                        }
-                      >
-                        <span>
-                          <strong>{p.title}</strong>
-                          <span className="muted">{p.status}</span>
-                        </span>
-                        <span
-                          className={
-                            openParameter === i ? "chevron expanded" : "chevron"
-                          }
-                        >
-                          <Icon name="arrow" size={21} />
-                        </span>
-                      </button>
-                      {openParameter === i && (
-                        <div className="parameter-explanation">
-                          <h3>Qué significa</h3>
-                          <p>{p.meaning}</p>
-                          <h3>Qué se suele hacer</h3>
-                          <p>{p.advice}</p>
-                          <div className="reviewed">
-                            <Icon name="shield" size={19} />
-                            Revisado por tu médico
-                          </div>
-                        </div>
-                      )}
-                    </section>
-                  ))}
+                      </>
+                    ),
+                    body: explanation(p.range, p.meaning, p.advice),
+                  }))
+                : s.findings.map((p) => ({
+                    key: p.title,
+                    head: (
+                      <>
+                        <strong>{p.title}</strong>
+                        <span className="muted">{p.status}</span>
+                      </>
+                    ),
+                    body: explanation("", p.meaning, p.advice),
+                  }))
+              ).map((p, i) => (
+                <section className="parameter card" key={p.key}>
+                  <button
+                    className="parameter-toggle"
+                    aria-expanded={openParameter === i}
+                    onClick={() => setOpenParameter(openParameter === i ? null : i)}
+                  >
+                    <span>{p.head}</span>
+                    <span
+                      className={openParameter === i ? "chevron expanded" : "chevron"}
+                    >
+                      <Icon name="arrow" size={21} />
+                    </span>
+                  </button>
+                  {openParameter === i && p.body}
+                </section>
+              ))}
               <Button
                 onClick={() => {
                   setDoubt("")
@@ -1820,20 +1370,16 @@ export default function App() {
                 }}
               >
                 <Icon name="chat" size={21} />
-                TENGO UNA DUDA
+                {s.haveDoubt}
               </Button>
-              <p className="muted">
-                Datos ilustrativos. No sustituye la consulta médica.
-              </p>
+              <p className="muted">{s.reportNote}</p>
             </>
           )}
           {screen === "question" && (
             <>
               <div className="intro">
-                <h2>Tu duda, a tu consulta</h2>
-                <p>
-                  Pregunta sobre tu informe. El equipo médico podrá orientarte.
-                </p>
+                <h2>{s.doubtTitle}</h2>
+                <p>{s.doubtText}</p>
               </div>
               <div className="context-line">
                 <Icon name="file" size={21} />
@@ -1846,7 +1392,7 @@ export default function App() {
                 }}
               >
                 <label className="field-label" htmlFor="doubt">
-                  ¿Qué te gustaría preguntar?
+                  {s.doubtLabel}
                 </label>
                 <textarea
                   id="doubt"
@@ -1854,26 +1400,17 @@ export default function App() {
                   maxLength={1000}
                   value={doubt}
                   onChange={(e) => setDoubt(e.target.value)}
-                  placeholder="Escribe tu duda sobre el informe…"
+                  placeholder={s.doubtPlaceholder}
                   rows={5}
                 />
-                <p className="muted left">
-                  Se dirigirá al equipo de tu consulta de{" "}
-                  {report.appointment.toLowerCase()}.
-                </p>
-                <div className="notice">
-                  <Icon name="shield" size={21} />
-                  <span>
-                    Este canal no atiende urgencias. Si es una urgencia, llama
-                    al 112.
-                  </span>
-                </div>
+                <p className="muted left">{s.doubtRouting(report.appointment)}</p>
+                <Notice text={s.urgencyNotice} />
                 <button
                   type="submit"
                   className="button"
                   disabled={!doubt.trim()}
                 >
-                  ENVIAR A MI CONSULTA
+                  {s.sendToConsultation}
                   <Icon name="send" size={20} />
                 </button>
               </form>
@@ -1882,52 +1419,44 @@ export default function App() {
           {screen === "questionSent" && (
             <>
               <Success
-                title="Enviada a tu consulta"
-                text={`Tu duda sobre «${report.title}» se ha preparado para el equipo de ${report.appointment.toLowerCase()}.`}
+                title={s.doubtSentTitle}
+                text={s.doubtSentText(report.title, report.appointment)}
               />
               <div className="card confirmation-info">
                 <Icon name="chat" />
                 <span>{doubt}</span>
               </div>
-              <p className="muted">
-                Envío simulado. No se ha enviado ninguna consulta real.
-              </p>
-              <Button onClick={() => go("report")}>VOLVER AL INFORME</Button>
+              <p className="muted">{s.doubtSentNote}</p>
+              <Button onClick={() => go("report")}>{s.backToReport}</Button>
               <Button secondary onClick={() => root("reports")}>
-                Ver todos mis informes
+                {s.viewAllReports}
               </Button>
             </>
           )}
           {screen === "human" && (
             <>
               <div className="intro">
-                <h2>Estamos para escucharte</h2>
-                <p>
-                  El equipo de atención al paciente puede ayudarte con tu
-                  recorrido.
-                </p>
+                <h2>{s.humanTitle}</h2>
+                <p>{s.humanText}</p>
               </div>
               <div className="card human-card">
                 <span className="round-icon">
                   <Icon name="user" size={28} />
                 </span>
-                <h3>Atención al paciente</h3>
-                <p>Hospiten Estepona</p>
+                <h3>{s.patientCare}</h3>
+                <p>{s.hospital}</p>
                 {!humanRequested ? (
                   <Button onClick={() => setHumanRequested(true)}>
-                    SOLICITAR QUE ME CONTACTEN
+                    {s.requestContact}
                   </Button>
                 ) : (
                   <div className="notice">
                     <Icon name="check" />
-                    <span>
-                      Solicitud simulada preparada. No se ha contactado con
-                      ningún servicio real.
-                    </span>
+                    <span>{s.humanRequested}</span>
                   </div>
                 )}
               </div>
-              <p className="muted">Si es una urgencia, llama al 112.</p>
+              <p className="muted">{s.emergency}</p>
             </>
           )}
           {footer && (
@@ -1939,26 +1468,26 @@ export default function App() {
               }}
             >
               <Icon name="chat" size={21} />
-              <span>Hablar con una persona</span>
+              <span>{s.talkToPerson}</span>
               <Icon name="arrow" size={18} />
             </button>
           )}
-          <p className="prototype-note">Prototipo · Datos ilustrativos</p>
+          <p className="prototype-note">{s.prototypeNote}</p>
         </main>
-        <nav className="bottom-nav" aria-label="Navegación principal">
+        <nav className="bottom-nav" aria-label={s.mainNav}>
           {navItems.map((item) => (
             <button
-              key={item.title}
+              key={item.key}
               onClick={() => root(item.target)}
-              className={`${item.title === activeNav ? "nav-active" : ""} ${
-                item.title === "Contigo" ? "contigo-nav" : ""
+              className={`${item.key === activeNav ? "nav-active" : ""} ${
+                item.key === "contigo" ? "contigo-nav" : ""
               }`}
-              aria-current={item.title === activeNav ? "page" : undefined}
+              aria-current={item.key === activeNav ? "page" : undefined}
             >
               <span className="nav-icon">
                 <Icon name={item.icon} size={25} />
               </span>
-              <span>{item.title}</span>
+              <span>{s.nav[item.key]}</span>
             </button>
           ))}
         </nav>

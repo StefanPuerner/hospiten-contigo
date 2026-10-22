@@ -40,7 +40,7 @@ Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospite
 | # | Función | Pantalla(s) (`Screen` en `src/App.tsx`) | Entrada |
 |---|---|---|---|
 | 1 | Asistente telefónico de citas | `call` | Módulo "Asistente de citas" (Inicio / Contigo) y paso "Cita" del recorrido |
-| 2 | Pre-consulta (chat en el idioma del paciente, resumen en español) | `language` → `pre` → `summary` → `preSent` | SMS al final de la llamada, módulo "Pre-consulta" |
+| 2 | Pre-consulta (chat en el idioma de la app, resumen en español) | `language` → `pre` → `summary` → `preSent` | SMS al final de la llamada, módulo "Pre-consulta" |
 | 3 | Turno en vivo (+ compartir con familiar) | `turn`, `share`, `shareSent`, `consultation` | Inicio, recorrido de la cita |
 | 4 | Traducción en consulta (+ intérprete) | `translate`, `interpreter` | Consulta, módulo "Traductor" |
 | 5 | Informe explicado (+ duda a la consulta) | `reports`, `report`, `question`, `questionSent` | Pestaña Informes |
@@ -61,9 +61,18 @@ Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospite
 - Consentimiento para usar datos seudonimizados para mejorar la IA: **desactivado por defecto**.
 - Protección de datos (información obligatoria, primera capa RGPD): texto de ejemplo, el legal definitivo lo fija Hospiten.
 
+## Idioma (ES / EN / DE)
+
+- Es un **ajuste global** (Ajustes → Idioma, `lang` en `App.tsx`; por defecto ES). Toda la app y el asistente (llamada, chat de pre-consulta) hablan en ese idioma. Al cambiarlo se reinician las respuestas de la pre-consulta.
+- Todos los textos viven en `src/i18n.ts` (`dict[lang]`; ES es la fuente y el tipo `Strings`, así que EN y DE no compilan si falta algo). Para añadir un idioma: ampliar `Lang`, `langs`, `languageNames`, `spanishNames` y `dict`, y la lista `translation`.
+- El **resumen para el médico siempre sale en español** (`doctorSummary`), con la cabecera en el idioma del paciente. Las respuestas libres se muestran tal cual.
+- Traductor: "Tu idioma" arranca con el idioma de la app; "Idioma del médico" es español salvo que la app esté en español.
+- Textos EN/DE escritos por Claude: pendientes de revisión por una persona nativa.
+
 ## Estructura
 
-- `src/App.tsx`: toda la app. Navegación por estado (`screen` + `history`), **sin router** (recargar vuelve a Inicio, sin 404). Datos de ejemplo arriba del archivo (`appointments`, `questions`, `callTurns`, `parameters`, `reportList`, `relatives`, `navItems`…). Componentes pequeños: `Button`, `IA`, `Toggle`, `RelativePicker`, `Success`.
+- `src/i18n.ts`: diccionario de textos y datos de ejemplo por idioma.
+- `src/App.tsx`: toda la app. Navegación por estado (`screen` + `history`), **sin router** (recargar vuelve a Inicio, sin 404). Datos estructurales arriba (`appointments`, `navItems`); los textos y datos de ejemplo (`callTurns`, `parameters`, `reportList`, `relatives`…) están en `i18n.ts`. Componentes pequeños: `Button`, `IA`, `Toggle`, `RelativePicker`, `Success`.
 - `src/Icon.tsx`: iconos SVG inline por nombre.
 - `src/index.css`: Tailwind 4 + CSS propio (tokens `--color-petrol #11333d`, `--color-lime #cce98e`, `--color-app`). Fuente DM Sans (Google Fonts).
 - `public/`: `hospiten-logo.png`, `favicon.svg`. Referenciar siempre con `import.meta.env.BASE_URL` (la app vive en `/hospiten-contigo/`).
@@ -114,6 +123,5 @@ Textos:
 
 Bugs menores:
 - "Volver a mis respuestas" (resumen de pre-consulta) no permite editar.
-- La pre-consulta viene con Alemán marcado por defecto (¿intencionado?).
 
 Estilo: falta comparar con capturas de la app real de Hospiten (inicio, citas, informes).
