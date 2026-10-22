@@ -6,7 +6,7 @@ Prototipo web (React 19 + Vite 8 + Tailwind 4) de una app móvil para el **Hacka
 - **Repo y URL (desplegados 2026-10-22):** https://github.com/StefanPuerner/hospiten-contigo → https://stefanpuerner.github.io/hospiten-contigo/
 - **Publicación anterior (cuenta `DanielMaudesDomenech`, ya no se usa):** https://github.com/DanielMaudesDomenech/hospiten-contigo → https://danielmaudesdomenech.github.io/hospiten-contigo/
 - **QR:** `qr.png` (fuera del repo, en la carpeta padre) codifica la URL nueva (regenerado 2026-10-22, 1025 px, corrección M). Falta escanearlo con un móvil.
-- **Capturas para la presentación:** `capturas/` (20 PNG, 393×852 a 3x, tomadas de la URL publicada).
+- **Capturas para la presentación:** `capturas/` (27 PNG, 393×852 a 3x, tomadas de la URL publicada; incluye alemán e inglés).
 - **Origen:** exportado de Figma Make (`.figma/make/*` son restos de esa herramienta; solo `site.json` se usa en el build)
 
 ## Cambio de cuenta a StefanPuerner
