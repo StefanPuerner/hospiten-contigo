@@ -1,0 +1,12 @@
+{
+  "title": "Hospiten Contigo · Prototipo",
+  "description": "Prototipo conceptual · Hackathon Talento Canario 2026 · No es una app oficial de Hospiten.",
+  "language": "es",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
