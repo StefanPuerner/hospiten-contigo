@@ -3,9 +3,10 @@
 Prototipo web (React 19 + Vite 8 + Tailwind 4) de una app móvil para el **Hackathon Talento Canario 2026**, reto de Hospiten: mejorar la comunicación hospital–paciente antes, durante y después de la consulta. "Hospiten Contigo" es una sección nueva **dentro de la app que Hospiten ya tiene**, no una app nueva. Se presenta **a Hospiten**.
 
 - **Cuenta de GitHub a partir de ahora: `StefanPuerner`.** Todo (repo, push, Pages, Actions, QR) va por esa cuenta. Ver "Cambio de cuenta" abajo.
-- **Repo y URL nuevos (pendientes de crear):** https://github.com/StefanPuerner/hospiten-contigo → https://stefanpuerner.github.io/hospiten-contigo/
+- **Repo y URL (desplegados 2026-10-22):** https://github.com/StefanPuerner/hospiten-contigo → https://stefanpuerner.github.io/hospiten-contigo/
 - **Publicación anterior (cuenta `DanielMaudesDomenech`, ya no se usa):** https://github.com/DanielMaudesDomenech/hospiten-contigo → https://danielmaudesdomenech.github.io/hospiten-contigo/
-- **QR:** `qr.png` (fuera del repo) codifica la URL **antigua**. Hay que regenerarlo con la nueva URL tras la migración.
+- **QR:** `qr.png` (fuera del repo, en la carpeta padre) codifica la URL nueva (regenerado 2026-10-22, 1025 px, corrección M). Falta escanearlo con un móvil.
+- **Capturas para la presentación:** `capturas/` (20 PNG, 393×852 a 3x, tomadas de la URL publicada).
 - **Origen:** exportado de Figma Make (`.figma/make/*` son restos de esa herramienta; solo `site.json` se usa en el build)
 
 ## Cambio de cuenta a StefanPuerner
@@ -23,11 +24,7 @@ gh workflow run deploy.yml -R StefanPuerner/hospiten-contigo   # el run del push
 gh run watch -R StefanPuerner/hospiten-contigo --exit-status
 ```
 
-Después:
-1. Comprobar que https://stefanpuerner.github.io/hospiten-contigo/ responde (HTML, JS, CSS y `hospiten-logo.png` con 200).
-2. **Regenerar `qr.png`** con la nueva URL (alto contraste, ≥1000 px, corrección de errores M) y escanearlo con un móvil. El QR antiguo apunta a la cuenta de Daniel.
-3. Decidir qué hacer con `DanielMaudesDomenech/hospiten-contigo`: mantenerlo hasta que no quede ningún QR antiguo impreso, y luego archivarlo o borrarlo.
-4. Sustituir en este archivo las referencias que queden a la cuenta antigua.
+Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospiten-contigo` (mantenerlo hasta que no quede ningún QR antiguo impreso, y luego archivarlo o borrarlo).
 
 ## Reglas del proyecto (decididas con el equipo)
 
