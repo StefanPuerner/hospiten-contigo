@@ -41,7 +41,7 @@ Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospite
 |---|---|---|---|
 | 1 | Asistente telefónico de citas | `call` | Módulo "Asistente de citas" (Inicio / Contigo) y paso "Cita" del recorrido |
 | 2 | Pre-consulta (chat en el idioma de la app, resumen en español) | `language` → `pre` → `summary` → `preSent` | SMS al final de la llamada, módulo "Pre-consulta" |
-| 3 | Turno en vivo (+ compartir con familiar) | `turn`, `share`, `shareSent`, `consultation` | Inicio, recorrido de la cita |
+| 3 | Turno en vivo | `turn`, `consultation` | Inicio, recorrido de la cita |
 | 4 | Traducción en consulta (+ intérprete) | `translate`, `interpreter` | Consulta, módulo "Traductor" |
 | 5 | Informe explicado (+ duda a la consulta) | `reports`, `report`, `question`, `questionSent` | Pestaña Informes |
 | — | Privacidad | `settings` | Pestaña "Ajustes" y avatar |
@@ -56,7 +56,7 @@ Pendiente de la migración: decidir qué hacer con `DanielMaudesDomenech/hospite
 
 ### Ajustes y privacidad (`settings`)
 - Aviso de privacidad.
-- Persona de confianza (pensada para personas mayores): se elige de los familiares vinculados (`RelativePicker`, compartido con "Compartir turno"), con permisos separados (informes y diagnósticos / citas / turno) revocables; se puede quitar.
+- Persona de confianza (pensada para personas mayores): se elige de los familiares vinculados (`RelativePicker`), con permisos separados (informes y diagnósticos / citas / turno) revocables; se puede quitar.
 - Reglas de edad: menores de 14, la cuenta la gestiona el tutor; de 14 a 17, decide el menor.
 - Consentimiento para usar datos seudonimizados para mejorar la IA: **desactivado por defecto**.
 - Protección de datos (información obligatoria, primera capa RGPD): texto de ejemplo, el legal definitivo lo fija Hospiten.

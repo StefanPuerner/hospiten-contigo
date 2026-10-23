@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Icon } from "./Icon"
 import { dict, langs, languageNames, spanishNames, type Lang, type Step } from "./i18n"
 
-type Screen = "home" | "appointments" | "appointment" | "contigo" | "call" | "settings" | "language" | "pre" | "summary" | "preSent" | "turn" | "consultation" | "share" | "shareSent" | "translate" | "interpreter" | "reports" | "report" | "question" | "questionSent" | "human"
+type Screen = "home" | "appointments" | "appointment" | "contigo" | "call" | "settings" | "language" | "pre" | "summary" | "preSent" | "turn" | "consultation" | "translate" | "interpreter" | "reports" | "report" | "question" | "questionSent" | "human"
 // `spec` indexes the translated specialty name (0 = Traumatología).
 const appointments = [
   { id: 0, spec: 0, day: 19, time: "11:30", doctor: 0, room: "2.14", past: false },
@@ -129,9 +129,6 @@ export default function App() {
   const [extraSummary, setExtraSummary] = useState("")
   const [notification, setNotification] = useState(false)
   const [called, setCalled] = useState(false)
-  const [relative, setRelative] = useState<number | null>(null)
-  const [consent, setConsent] = useState(false)
-  const [shared, setShared] = useState(false)
   const [fromLang, setFromLang] = useState<Lang>("EN")
   const [toLang, setToLang] = useState<Lang>("ES")
   const [listening, setListening] = useState(false)
@@ -247,7 +244,6 @@ export default function App() {
   const ds = dict.ES.doctorSummary
   const forDoctor = (i: number) =>
     answers[i] === s.exampleAnswers[i] ? ds.examples[i] : answers[i] || ds.notGiven
-  const relativeName = (i: number) => s.relatives[i].split(" · ")[0]
   const languageSelect = (value: Lang, onChange: (l: Lang) => void) => (
     <select value={value} onChange={(e) => onChange(e.target.value as Lang)}>
       {langs.map((l) => (
@@ -1106,15 +1102,6 @@ export default function App() {
                   <Icon name="arrow" size={20} />
                 </button>
               )}
-              <Button
-                onClick={() => {
-                  setConsent(false)
-                  go("share")
-                }}
-              >
-                <Icon name="share" size={21} />
-                {shared ? s.shareAgain : s.shareWith}
-              </Button>
               <p className="muted">{s.turnNote}</p>
             </>
           )}
@@ -1141,67 +1128,6 @@ export default function App() {
                 {s.viewMyAppointment}
               </Button>
               <p className="muted">{s.consultationNote}</p>
-            </>
-          )}
-          {screen === "share" && (
-            <>
-              <div className="intro">
-                <h2>{s.shareTitle}</h2>
-                <p>{s.shareText}</p>
-              </div>
-              <h3>{s.linkedRelatives}</h3>
-              <RelativePicker
-                relatives={s.relatives}
-                value={relative}
-                onChange={setRelative}
-              />
-              <Notice text={s.shareNotice} />
-              <label className="consent">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                />
-                <span>{s.shareConsent}</span>
-              </label>
-              <Button
-                disabled={relative === null || !consent}
-                onClick={() => {
-                  setShared(true)
-                  go("shareSent")
-                }}
-              >
-                {s.confirmShare}
-              </Button>
-              <p className="muted">{s.shareNote}</p>
-            </>
-          )}
-          {screen === "shareSent" && (
-            <>
-              <Success
-                title={s.sharedTitle}
-                text={s.sharedText(relativeName(relative ?? 0))}
-              />
-              <div className="card confirmation-info">
-                <Icon name="share" />
-                <span>
-                  {s.sharedInfo[0]}
-                  <br />
-                  {s.sharedInfo[1]}
-                </span>
-              </div>
-              <Button onClick={() => go("turn")}>{s.backToTurn}</Button>
-              <Button
-                secondary
-                onClick={() => {
-                  setShared(false)
-                  setConsent(false)
-                  go("turn")
-                }}
-              >
-                {s.stopSharing}
-              </Button>
-              <p className="muted">{s.sharedNote}</p>
             </>
           )}
           {screen === "translate" && (

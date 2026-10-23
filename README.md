@@ -20,7 +20,7 @@ El recorrido del paciente, en este orden:
 
 1. **Asistente telefónico de citas.** Llamada simulada para pedir, cambiar o anular cita. No da información clínica y puede pasar con una persona del equipo de citas, que recibe un resumen de lo hablado.
 2. **Pre-consulta.** Un chat guiado en el idioma del paciente. El médico recibe el resumen en español.
-3. **Turno en vivo.** Cuántas personas hay delante, aviso antes de entrar y opción de compartir el estado con un familiar (solo turno y tiempo estimado).
+3. **Turno en vivo.** Cuántas personas hay delante y aviso antes de entrar.
 4. **Traducción en consulta.** Subtítulos y traducción entre paciente y médico, con opción de solicitar intérprete.
 5. **Informe explicado.** Resultados con una explicación sencilla y la posibilidad de enviar una duda a la consulta.
 
