@@ -312,7 +312,7 @@ export default function App() {
       description: first ? j.appointmentCall : s.confirmed,
       state: "hecho",
       action: startCall,
-      disabled: !first,
+      disabled: true,
     },
     {
       label: s.modules.pre[0],
@@ -506,8 +506,19 @@ export default function App() {
                         aria-label={s.dayLabel(day, monthLabel, marked)}
                         aria-pressed={selectedDay === day}
                         onClick={() => {
-                          setSelectedDay(selectedDay === day ? null : day)
-                          if (marked) setTab(day < 19 ? "past" : "next")
+                          const next = selectedDay === day ? null : day
+                          setSelectedDay(next)
+                          if (marked) {
+                            setTab(day < 19 ? "past" : "next")
+                            if (next !== null) {
+                              requestAnimationFrame(() =>
+                                scroll.current?.scrollTo({
+                                  top: scroll.current.scrollHeight,
+                                  behavior: "smooth",
+                                }),
+                              )
+                            }
+                          }
                         }}
                         className={`${
                           month === 4 && day === 19 ? "today" : ""
@@ -653,7 +664,7 @@ export default function App() {
                         </span>
                         <span>{step.description}</span>
                       </span>
-                      <Icon name="arrow" size={17} />
+                      {!step.disabled && <Icon name="arrow" size={17} />}
                     </button>
                   ))}
                 </div>
